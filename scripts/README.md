@@ -40,3 +40,18 @@ Inserting sidebar position 6 into /Users/dariusn/dev/dn/git/Beman/website/docs/g
 Copying ../beman/docs/code_of_conduct.md to /Users/dariusn/dev/dn/git/Beman/website/docs/code_of_conduct.md
 Inserting sidebar position 7 into /Users/dariusn/dev/dn/git/Beman/website/docs/code_of_conduct.md
 ```
+
+## sync-external-docs.py
+
+Sync generated documentation outputs from external repos into `static/`.
+
+Currently supported repos are listed in the script's `REPO_DOCS` whitelist.
+
+```shell
+$ python3 scripts/sync-external-docs.py
+Building docs in /path/to/optional with: make docs
+Copying /path/to/optional/docs/html to /path/to/website/static/optional
+
+# Override the parent folder containing external repos
+$ python3 scripts/sync-external-docs.py --repos-root ../
+```
