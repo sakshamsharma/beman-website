@@ -52,6 +52,16 @@ def parse_args():
         help="skip running build commands and only sync existing docs outputs",
         action="store_true",
     )
+    parser.add_argument(
+        "--clone-missing",
+        help="clone missing repositories listed in REPO_DOCS",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--update-repos",
+        help="update already checked out repositories to their configured branch tip",
+        action="store_true",
+    )
     return parser.parse_args()
 
 
@@ -63,6 +73,28 @@ def run_build(repo_path: Path, build_cmd: list[str]) -> bool:
     except subprocess.CalledProcessError as exc:
         print(f"Build failed in {repo_path} (exit {exc.returncode})")
         return False
+
+
+def ensure_repo(repo: dict, repos_root: Path, clone_missing: bool, update_repos: bool) -> Path:
+    repo_path = repos_root / repo["name"]
+    repo_url = repo.get("repo_url", "")
+    repo_branch = repo.get("repo_branch", "main")
+
+    if not repo_path.exists() and clone_missing and repo_url:
+        repo_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"Cloning {repo_url} into {repo_path}")
+        subprocess.run(
+            ["git", "clone", "--branch", repo_branch, "--single-branch", repo_url, str(repo_path)],
+            check=True,
+        )
+
+    if repo_path.exists() and update_repos:
+        print(f"Updating {repo_path} to origin/{repo_branch}")
+        subprocess.run(["git", "fetch", "origin", repo_branch], cwd=repo_path, check=True)
+        subprocess.run(["git", "checkout", repo_branch], cwd=repo_path, check=True)
+        subprocess.run(["git", "pull", "--ff-only", "origin", repo_branch], cwd=repo_path, check=True)
+
+    return repo_path
 
 
 def copy_docs(source: Path, target: Path) -> bool:
@@ -126,7 +158,7 @@ def rewrite_repo_links(content: str, repo_url: str, repo_branch: str) -> str:
 
 
 def build_index_block(repo_name: str, repo_url: str, static_target_rel: Path) -> str:
-    api_path = f"/{static_target_rel.name}/index.html" if static_target_rel else ""
+    api_path = f"pathname:///{static_target_rel.name}/index.html" if static_target_rel else ""
     parts = [
         f"# {repo_name}",
         "",
@@ -135,9 +167,7 @@ def build_index_block(repo_name: str, repo_url: str, static_target_rel: Path) ->
     if repo_url:
         parts.append(f"- [Repository]({repo_url})")
     if api_path:
-        parts.append(
-            f"- <a href=\"{api_path}\" data-noBrokenLinkCheck>API reference</a>"
-        )
+        parts.append(f"- [API reference]({api_path})")
     parts.append("- [Overview](/docs/libraries/optional/overview)")
     parts.append("- [Debugging CI](/docs/libraries/optional/debug-ci)")
     return "\n".join(parts)
@@ -191,7 +221,12 @@ def main():
 
     failures = 0
     for repo in REPO_DOCS:
-        repo_path = repos_root / repo["name"]
+        repo_path = ensure_repo(
+            repo,
+            repos_root,
+            clone_missing=args.clone_missing,
+            update_repos=args.update_repos,
+        )
         if not repo_path.exists():
             print(f"Skipping missing repo: {repo_path}")
             continue

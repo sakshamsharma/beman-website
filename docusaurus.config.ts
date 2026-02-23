@@ -5,6 +5,8 @@ import { execSync } from "child_process";
 
 const remarkEmbedder = require("@remark-embedder/core");
 const YouTubeTransformer = require("./src/components/youtube-transformer.js");
+const siteUrl = process.env.DOCUSAURUS_URL || "https://bemanproject.org/";
+const siteBaseUrl = process.env.DOCUSAURUS_BASE_URL || "/";
 
 // Note: This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -28,10 +30,10 @@ const config: Config = {
   favicon: "./img/beman_logo.png",
 
   // Set the production url of your site here
-  url: "https://bemanproject.org/",
+  url: siteUrl,
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: "/",
+  baseUrl: siteBaseUrl,
 
   // GitHub pages deployment config.
   organizationName: "bemanproject", // Usually your GitHub org/user name.

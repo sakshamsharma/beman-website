@@ -216,3 +216,17 @@ To generate static from the project that can be served using any static contents
 ```shell
 $ make build
 ```
+
+### Automated `gh-pages` publishing
+
+GitHub Actions publishes this site to the `gh-pages` branch on:
+
+- pushes to `main`
+- a 6-hour schedule (`0 */6 * * *`)
+- manual dispatch
+
+The workflow syncs external library docs first via:
+
+```shell
+$ python3 scripts/sync-external-docs.py --repos-root /tmp/beman-external --clone-missing --update-repos
+```

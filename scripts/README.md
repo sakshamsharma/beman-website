@@ -54,4 +54,15 @@ Copying /path/to/optional/docs/html to /path/to/website/static/optional
 
 # Override the parent folder containing external repos
 $ python3 scripts/sync-external-docs.py --repos-root ../
+
+# In CI: clone missing repos and update them before syncing docs
+$ python3 scripts/sync-external-docs.py --repos-root /tmp/beman-external --clone-missing --update-repos
+```
+
+## publish-gh-pages.sh
+
+Publish the Docusaurus `build/` output to the `gh-pages` branch.
+
+```shell
+$ bash scripts/publish-gh-pages.sh gh-pages
 ```

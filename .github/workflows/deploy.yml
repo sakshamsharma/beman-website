@@ -1,51 +1,61 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-name: Deploy Beman website to GitHub Pages
+name: Publish website to gh-pages
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+
+concurrency:
+  group: gh-pages-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write
 
 jobs:
-  build:
-    name: Build static content
+  publish:
     runs-on: ubuntu-latest
+    env:
+      REPOS_ROOT: /tmp/beman-external
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout website repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: yarn
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
+      - name: Install docs toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+
+      - name: Install website dependencies
+        run: make install
+
+      - name: Sync external docs
+        run: |
+          python3 scripts/sync-external-docs.py \
+            --repos-root "${REPOS_ROOT}" \
+            --clone-missing \
+            --update-repos
+
       - name: Build website
-        run: yarn build
+        run: make build
         env:
           PAGES_DEPLOY: true
+          DOCUSAURUS_URL: ${{ github.repository_owner == 'bemanproject' && 'https://bemanproject.org' || format('https://{0}.github.io', github.repository_owner) }}
+          DOCUSAURUS_BASE_URL: ${{ github.repository_owner == 'bemanproject' && '/' || format('/{0}/', github.event.repository.name) }}
 
-      - name: Upload Build Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: build
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: build
-
-    permissions:
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish to gh-pages branch
+        run: bash scripts/publish-gh-pages.sh gh-pages
