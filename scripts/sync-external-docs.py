@@ -95,7 +95,7 @@ def infer_build_config(repo_path: Path, repo_name: str) -> dict:
     return {
         "build_cmd": ["make", "docs"],
         "docs_output_rel": docs_output_rel,
-        "static_target_rel": Path("static") / repo_name,
+        "static_target_rel": Path(repo_name),
     }
 
 
@@ -295,7 +295,7 @@ def build_index_block(repo: dict) -> str:
     repo_name = repo.get("name", "")
     repo_url = repo.get("repo_url", "")
     static_target_rel = repo.get("static_target_rel")
-    api_path = f"/{static_target_rel.name}/index.html" if static_target_rel else ""
+    api_path = f"/{static_target_rel.as_posix()}/index.html" if static_target_rel else ""
     parts = [
         f"# {repo_name}",
         "",
@@ -308,9 +308,7 @@ def build_index_block(repo: dict) -> str:
     for doc in repo.get("markdown_docs", []):
         if doc.get("generated") == "index":
             continue
-        parts.append(
-            f"- [{doc['sidebar_label']}]({target_rel_to_permalink(doc['target_rel'])})"
-        )
+        parts.append(f"- [{doc['sidebar_label']}]({doc['target_rel'].name})")
     return "\n".join(parts)
 
 
