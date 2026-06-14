@@ -262,6 +262,11 @@ th {
   padding: 2rem 1rem 4rem;
 }
 
+.page-shell.no-sidebar {
+  grid-template-columns: minmax(0, var(--content-max)) minmax(160px, 220px);
+  justify-content: center;
+}
+
 .content-panel {
   min-width: 0;
 }
@@ -299,15 +304,43 @@ th {
 }
 
 .sidebar a,
-.sidebar span,
+.sidebar summary,
 .toc-panel a {
   display: block;
   padding: 0.2rem 0;
   color: var(--ifm-color-content-secondary);
 }
 
+.sidebar details {
+  margin: 0;
+}
+
+.sidebar summary {
+  position: relative;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+}
+
+.sidebar summary::-webkit-details-marker {
+  display: none;
+}
+
+.sidebar summary::after {
+  content: "›";
+  position: absolute;
+  right: 0.25rem;
+  color: var(--ifm-color-content-secondary);
+  transform: rotate(0deg);
+  transition: transform 120ms ease;
+}
+
+.sidebar details[open] > summary::after {
+  transform: rotate(90deg);
+}
+
 .sidebar li.active > a,
-.sidebar li.active > span,
+.sidebar li.active > details > summary,
 .toc-panel a:hover {
   color: var(--ifm-color-primary);
   font-weight: 600;
@@ -428,6 +461,10 @@ th {
 @media (max-width: 1100px) {
   .page-shell {
     grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
+  }
+
+  .page-shell.no-sidebar {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .toc-panel {

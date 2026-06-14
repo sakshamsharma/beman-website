@@ -41,20 +41,26 @@
       </nav>
     </header>
 
+    {% set section = page.url.split('/')[0] if page and page.url else '' %}
+    {% set show_sidebar = section in ['docs', 'blog'] %}
+
     {% if page and page.meta.layout == 'home' %}
       <main class="home-main">
         {{ page.content }}
       </main>
     {% else %}
-      <main class="page-shell">
-        <aside class="sidebar">
-          {% macro render_nav(items) %}
+      <main class="page-shell{% if not show_sidebar %} no-sidebar{% endif %}">
+        {% if show_sidebar %}
+        <aside class="sidebar" aria-label="{{ section|capitalize }} navigation">
+          {% macro render_sidebar(items) %}
             <ul>
               {% for item in items %}
                 <li class="{% if item.active %}active{% endif %}">
                   {% if item.children %}
-                    <span>{{ item.title }}</span>
-                    {{ render_nav(item.children) }}
+                    <details{% if item.active %} open{% endif %}>
+                      <summary>{{ item.title }}</summary>
+                      {{ render_sidebar(item.children) }}
+                    </details>
                   {% else %}
                     <a href="{{ item.url|url }}">{{ item.title }}</a>
                   {% endif %}
@@ -62,8 +68,18 @@
               {% endfor %}
             </ul>
           {% endmacro %}
-          {{ render_nav(nav) }}
+
+          {% for nav_item in nav %}
+            {% if nav_item.title|lower == section %}
+              {% if nav_item.children %}
+                {{ render_sidebar(nav_item.children) }}
+              {% else %}
+                <ul><li class="active"><a href="{{ nav_item.url|url }}">{{ nav_item.title }}</a></li></ul>
+              {% endif %}
+            {% endif %}
+          {% endfor %}
         </aside>
+        {% endif %}
         <article class="content-panel">
           {% if page and page.meta.blog_post %}
             <p class="post-meta">{{ page.meta.post_date }}{% if page.meta.author_names %} · {{ page.meta.author_names }}{% endif %}</p>
