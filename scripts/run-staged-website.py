@@ -176,21 +176,6 @@ def first_heading(markdown: str) -> str:
     return "Blog post"
 
 
-def excerpt(markdown: str) -> str:
-    before, _, _ = markdown.partition("<!-- truncate -->")
-    lines = []
-    in_frontmatter = False
-    for line in before.splitlines():
-        if line.strip() == "---":
-            in_frontmatter = not in_frontmatter
-            continue
-        if in_frontmatter or line.startswith("# "):
-            continue
-        lines.append(line)
-    text = "\n".join(lines).strip()
-    return text or "Read the full post."
-
-
 def normalize_blog_post(source: Path, target: Path, authors: dict) -> dict:
     metadata, body = strip_frontmatter(source.read_text())
     slug = metadata.get("slug") or source.parent.name
@@ -223,7 +208,7 @@ def normalize_blog_post(source: Path, target: Path, authors: dict) -> dict:
         "url": f"{slug}/",
         "date": post_date,
         "authors": page_meta["author_names"],
-        "excerpt": excerpt(body),
+        "tags": metadata.get("tags") or [],
     }
 
 
@@ -246,22 +231,27 @@ def migrate_blog(stage_root: Path, content_root: Path):
         "",
         "# Blog",
         "",
-        '<div class="blog-list">',
+        '<div class="blog-index">',
     ]
     for post in posts:
+        tags = post["tags"]
+        if isinstance(tags, str):
+            tags = [tags]
+        tag_html = "".join(f'<span class="badge">{tag}</span>' for tag in tags)
         cards.extend(
             [
-                '<article class="blog-card">',
-                f'  <h2><a href="{post["url"]}">{post["title"]}</a></h2>',
-                f'  <p class="blog-card-meta">{post["date"]}'
-                + (f' · {post["authors"]}' if post["authors"] else "")
-                + "</p>",
-                f'  <p>{post["excerpt"]}</p>',
+                '<article class="blog-index-item">',
+                f'  <time>{post["date"]}</time>',
+                '  <div>',
+                f'    <h2><a href="{post["url"]}">{post["title"]}</a></h2>',
+                f'    <p class="blog-card-meta">{post["authors"]}</p>' if post["authors"] else "",
+                f'    <div class="blog-tags">{tag_html}</div>' if tag_html else "",
+                "  </div>",
                 "</article>",
             ]
         )
     cards.append("</div>")
-    (blog_target / "index.md").write_text("\n".join(cards) + "\n")
+    (blog_target / "index.md").write_text("\n".join(line for line in cards if line) + "\n")
 
 
 def prepare_mkdocs_content(stage_root: Path):

@@ -374,6 +374,39 @@ th {
   margin: 0 0 0.25rem;
 }
 
+.blog-index {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.blog-index-item {
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr);
+  gap: 1.25rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.blog-index-item time {
+  color: var(--ifm-color-content-secondary);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.blog-index-item h2 {
+  margin: 0 0 0.2rem;
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
+.blog-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
 .talk-post {
   margin-bottom: 3rem;
 }
@@ -394,6 +427,7 @@ th {
   background: var(--ifm-color-emphasis-200);
   color: var(--ifm-color-content);
   font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 .avatar {
@@ -530,6 +564,11 @@ th {
 
   .feature-grid {
     grid-template-columns: 1fr;
+  }
+
+  .blog-index-item {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
   }
 
   .page-shell {

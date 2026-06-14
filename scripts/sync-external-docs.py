@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import subprocess  # nosec B404
 from pathlib import Path
@@ -257,6 +258,7 @@ def copy_markdown_with_frontmatter(
 
     target.parent.mkdir(parents=True, exist_ok=True)
     content = source.read_text() if source else ""
+    content = enable_markdown_in_details(content)
     content = rewrite_repo_links(content, repo_url, repo_branch)
     if intro_block:
         content = intro_block + "\n\n" + content
@@ -275,6 +277,10 @@ def copy_markdown_with_frontmatter(
     target.write_text(content)
     print(f"Copied markdown {source} to {target}")
     return True
+
+
+def enable_markdown_in_details(content: str) -> str:
+    return re.sub(r"<details(?![^>]*\bmarkdown=)([^>]*)>", r'<details markdown="1"\1>', content)
 
 
 def rewrite_repo_links(content: str, repo_url: str, repo_branch: str) -> str:
