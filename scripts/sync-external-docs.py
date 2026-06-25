@@ -19,6 +19,9 @@ SPECIAL_LABELS = {
     "using_cstring_view": "Guide",
     "design_rationale": "Design Rationale",
 }
+MARKDOWN_LINK_RE = re.compile(
+    r"(?P<prefix>!?\[[^\]]*\]\()(?P<href>[^\s)]+)(?P<suffix>(?:\s+[^)]*)?\))"
+)
 
 
 def run_command(*args, **kwargs) -> subprocess.CompletedProcess:
@@ -116,7 +119,7 @@ def target_rel_to_permalink(target_rel: Path) -> str:
 def make_sidebar_label(target_name: str) -> str:
     stem = Path(target_name).stem
     if stem.lower() == "readme":
-        return "Overview"
+        return "README"
     if stem in SPECIAL_LABELS:
         return SPECIAL_LABELS[stem]
     return stem.replace("_", " ").replace("-", " ").title()
@@ -172,7 +175,21 @@ def generate_repo_docs_from_manifest(
         }
         repo.update(infer_build_config(repo_path, repo_name))
 
-        for position, entry in enumerate(config.get("files", []), start=2):
+        readme_path = repo_path / "README.md"
+        next_position = 2
+        if readme_path.exists():
+            repo["markdown_docs"].append(
+                {
+                    "source_rel": Path("README.md"),
+                    "target_rel": Path("docs") / "Libraries" / repo_name / "readme.md",
+                    "sidebar_position": next_position,
+                    "sidebar_label": "README",
+                    "repo_root_doc": True,
+                }
+            )
+            next_position += 1
+
+        for position, entry in enumerate(config.get("files", []), start=next_position):
             source_rel, target_spec = parse_file_entry(entry)
             target_rel = Path("docs") / "Libraries" / repo_name / target_spec
             repo["markdown_docs"].append(
@@ -183,6 +200,12 @@ def generate_repo_docs_from_manifest(
                     "sidebar_label": make_sidebar_label(target_rel.name),
                 }
             )
+
+        repo["source_link_map"] = {
+            doc["source_rel"].as_posix(): doc["target_rel"].name
+            for doc in repo["markdown_docs"]
+            if "source_rel" in doc
+        }
 
         repos.append(repo)
     return repos
@@ -251,6 +274,9 @@ def copy_markdown_with_frontmatter(
     repo_url: str = "",
     repo_branch: str = "main",
     intro_block: str = "",
+    source_link_map: dict[str, str] | None = None,
+    source_repo_path: Path | None = None,
+    rewrite_repo_relative_links: bool = False,
 ) -> bool:
     if source and not source.exists():
         print(f"Missing markdown source: {source}")
@@ -259,7 +285,14 @@ def copy_markdown_with_frontmatter(
     target.parent.mkdir(parents=True, exist_ok=True)
     content = source.read_text() if source else ""
     content = enable_markdown_in_details(content)
-    content = rewrite_repo_links(content, repo_url, repo_branch)
+    content = rewrite_repo_links(
+        content,
+        repo_url,
+        repo_branch,
+        source_link_map=source_link_map,
+        source_repo_path=source_repo_path,
+        rewrite_relative_links=rewrite_repo_relative_links,
+    )
     if intro_block:
         content = intro_block + "\n\n" + content
         content = content.replace("\n# Overview", "\n## Overview", 1)
@@ -283,7 +316,14 @@ def enable_markdown_in_details(content: str) -> str:
     return re.sub(r"<details(?![^>]*\bmarkdown=)([^>]*)>", r'<details markdown="1"\1>', content)
 
 
-def rewrite_repo_links(content: str, repo_url: str, repo_branch: str) -> str:
+def rewrite_repo_links(
+    content: str,
+    repo_url: str,
+    repo_branch: str,
+    source_link_map: dict[str, str] | None = None,
+    source_repo_path: Path | None = None,
+    rewrite_relative_links: bool = False,
+) -> str:
     if not repo_url:
         return content
 
@@ -294,7 +334,105 @@ def rewrite_repo_links(content: str, repo_url: str, repo_branch: str) -> str:
     }
     for old, new in replacements.items():
         content = content.replace(old, new)
+
+    if rewrite_relative_links:
+        content = rewrite_relative_markdown_links(
+            content, repo_url, repo_branch, source_link_map or {}, source_repo_path
+        )
     return content
+
+
+def split_link_target(href: str) -> tuple[str, str]:
+    for separator in ("#", "?"):
+        if separator in href:
+            path, rest = href.split(separator, 1)
+            return path, separator + rest
+    return href, ""
+
+
+def is_external_or_anchor(href: str) -> bool:
+    return (
+        not href
+        or href.startswith("#")
+        or href.startswith("/")
+        or href.startswith("//")
+        or bool(re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", href))
+    )
+
+
+def normalize_repo_relative_path(path: str) -> str:
+    return path.removeprefix("./")
+
+
+def resolve_repo_relative_path(path: str, repo_path: Path | None) -> str:
+    normalized = normalize_repo_relative_path(path)
+    if not repo_path:
+        return normalized
+
+    if (repo_path / normalized).exists():
+        return normalized
+
+    pluralized = normalized + "s"
+    if (repo_path / pluralized).exists():
+        return pluralized
+
+    return normalized
+
+
+def github_relative_url(
+    repo_url: str,
+    repo_branch: str,
+    path: str,
+    is_image: bool,
+    repo_path: Path | None = None,
+) -> str:
+    path = resolve_repo_relative_path(path, repo_path)
+    if is_image:
+        return f"{repo_url}/raw/{repo_branch}/{path}"
+    kind = "tree" if path.endswith("/") or "." not in Path(path).name else "blob"
+    return f"{repo_url}/{kind}/{repo_branch}/{path}"
+
+
+def rewrite_relative_markdown_links(
+    content: str,
+    repo_url: str,
+    repo_branch: str,
+    source_link_map: dict[str, str],
+    source_repo_path: Path | None,
+) -> str:
+    def replace(match: re.Match) -> str:
+        href = match.group("href")
+        if href.startswith("`") and href.endswith("`"):
+            href = href[1:-1]
+        if is_external_or_anchor(href):
+            return match.group(0)
+
+        path, suffix = split_link_target(href)
+        normalized_path = normalize_repo_relative_path(path)
+        if normalized_path in source_link_map:
+            href = source_link_map[normalized_path] + suffix
+        else:
+            href = github_relative_url(
+                repo_url,
+                repo_branch,
+                path,
+                is_image=match.group("prefix").startswith("!"),
+                repo_path=source_repo_path,
+            )
+            if suffix:
+                href += suffix
+
+        return f"{match.group('prefix')}{href}{match.group('suffix')}"
+
+    rewritten_blocks = []
+    in_fence = False
+    for line in content.splitlines(keepends=True):
+        if re.match(r"^\s*(```|~~~)", line):
+            in_fence = not in_fence
+            rewritten_blocks.append(line)
+            continue
+        rewritten_blocks.append(line if in_fence else MARKDOWN_LINK_RE.sub(replace, line))
+    return "".join(rewritten_blocks)
 
 
 def build_index_block(repo: dict) -> str:
@@ -369,6 +507,9 @@ def main():
                 repo_url=repo.get("repo_url", ""),
                 repo_branch=repo.get("repo_branch", "main"),
                 intro_block=intro_block,
+                source_link_map=repo.get("source_link_map", {}),
+                source_repo_path=repo_path,
+                rewrite_repo_relative_links=doc.get("repo_root_doc", False),
             ):
                 failures += 1
 
