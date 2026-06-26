@@ -22,6 +22,9 @@ SPECIAL_LABELS = {
 MARKDOWN_LINK_RE = re.compile(
     r"(?P<prefix>!?\[[^\]]*\]\()(?P<href>[^\s)]+)(?P<suffix>(?:\s+[^)]*)?\))"
 )
+GITHUB_BLOB_URL_RE = re.compile(
+    r"^https://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/blob/(?P<branch>[^/]+)/(?P<path>.+)$"
+)
 
 
 def run_command(*args, **kwargs) -> subprocess.CompletedProcess:
@@ -335,6 +338,8 @@ def rewrite_repo_links(
     for old, new in replacements.items():
         content = content.replace(old, new)
 
+    content = rewrite_github_blob_image_links(content)
+
     if rewrite_relative_links:
         content = rewrite_relative_markdown_links(
             content, repo_url, repo_branch, source_link_map or {}, source_repo_path
@@ -393,6 +398,42 @@ def github_relative_url(
     return f"{repo_url}/{kind}/{repo_branch}/{path}"
 
 
+def rewrite_markdown_links_outside_fences(content: str, replacer) -> str:
+    rewritten_blocks = []
+    in_fence = False
+    for line in content.splitlines(keepends=True):
+        if re.match(r"^\s*(```|~~~)", line):
+            in_fence = not in_fence
+            rewritten_blocks.append(line)
+            continue
+        rewritten_blocks.append(line if in_fence else MARKDOWN_LINK_RE.sub(replacer, line))
+    return "".join(rewritten_blocks)
+
+
+def rewrite_github_blob_image_links(content: str) -> str:
+    def replace(match: re.Match) -> str:
+        if not match.group("prefix").startswith("!"):
+            return match.group(0)
+
+        href = match.group("href")
+        pathless_href, suffix = split_link_target(href)
+        github_match = GITHUB_BLOB_URL_RE.match(pathless_href)
+        if not github_match:
+            return match.group(0)
+
+        href = (
+            "https://raw.githubusercontent.com/"
+            f"{github_match.group('owner')}/"
+            f"{github_match.group('repo')}/"
+            f"{github_match.group('branch')}/"
+            f"{github_match.group('path')}"
+            f"{suffix}"
+        )
+        return f"{match.group('prefix')}{href}{match.group('suffix')}"
+
+    return rewrite_markdown_links_outside_fences(content, replace)
+
+
 def rewrite_relative_markdown_links(
     content: str,
     repo_url: str,
@@ -424,15 +465,7 @@ def rewrite_relative_markdown_links(
 
         return f"{match.group('prefix')}{href}{match.group('suffix')}"
 
-    rewritten_blocks = []
-    in_fence = False
-    for line in content.splitlines(keepends=True):
-        if re.match(r"^\s*(```|~~~)", line):
-            in_fence = not in_fence
-            rewritten_blocks.append(line)
-            continue
-        rewritten_blocks.append(line if in_fence else MARKDOWN_LINK_RE.sub(replace, line))
-    return "".join(rewritten_blocks)
+    return rewrite_markdown_links_outside_fences(content, replace)
 
 
 def build_index_block(repo: dict) -> str:
