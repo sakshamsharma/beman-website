@@ -167,51 +167,57 @@ def generate_repo_docs_from_manifest(
             "path": repo_path,
             "repo_url": f"https://github.com/bemanproject/{repo_name}",
             "repo_branch": "main",
-            "markdown_docs": [
-                {
-                    "target_rel": Path("docs") / "Libraries" / repo_name / "index.md",
-                    "sidebar_position": 1,
-                    "sidebar_label": f"beman.{repo_name}",
-                    "generated": "index",
-                }
-            ],
-        }
-        repo.update(infer_build_config(repo_path, repo_name))
-
-        readme_path = repo_path / "README.md"
-        next_position = 2
-        if readme_path.exists():
-            repo["markdown_docs"].append(
-                {
-                    "source_rel": Path("README.md"),
-                    "target_rel": Path("docs") / "Libraries" / repo_name / "readme.md",
-                    "sidebar_position": next_position,
-                    "sidebar_label": "README",
-                    "repo_root_doc": True,
-                }
-            )
-            next_position += 1
-
-        for position, entry in enumerate(config.get("files", []), start=next_position):
-            source_rel, target_spec = parse_file_entry(entry)
-            target_rel = Path("docs") / "Libraries" / repo_name / target_spec
-            repo["markdown_docs"].append(
-                {
-                    "source_rel": source_rel,
-                    "target_rel": target_rel,
-                    "sidebar_position": position,
-                    "sidebar_label": make_sidebar_label(target_rel.name),
-                }
-            )
-
-        repo["source_link_map"] = {
-            doc["source_rel"].as_posix(): doc["target_rel"].name
-            for doc in repo["markdown_docs"]
-            if "source_rel" in doc
+            "configured_files": config.get("files", []),
         }
 
         repos.append(repo)
     return repos
+
+
+def populate_discovered_repo_metadata(repo: dict, repo_path: Path):
+    repo_name = repo["name"]
+    repo.update(infer_build_config(repo_path, repo_name))
+
+    markdown_docs = [
+        {
+            "target_rel": Path("docs") / "Libraries" / repo_name / "index.md",
+            "sidebar_position": 1,
+            "sidebar_label": f"beman.{repo_name}",
+            "generated": "index",
+        }
+    ]
+
+    next_position = 2
+    if (repo_path / "README.md").exists():
+        markdown_docs.append(
+            {
+                "source_rel": Path("README.md"),
+                "target_rel": Path("docs") / "Libraries" / repo_name / "readme.md",
+                "sidebar_position": next_position,
+                "sidebar_label": "README",
+                "repo_root_doc": True,
+            }
+        )
+        next_position += 1
+
+    for position, entry in enumerate(repo.get("configured_files", []), start=next_position):
+        source_rel, target_spec = parse_file_entry(entry)
+        target_rel = Path("docs") / "Libraries" / repo_name / target_spec
+        markdown_docs.append(
+            {
+                "source_rel": source_rel,
+                "target_rel": target_rel,
+                "sidebar_position": position,
+                "sidebar_label": make_sidebar_label(target_rel.name),
+            }
+        )
+
+    repo["markdown_docs"] = markdown_docs
+    repo["source_link_map"] = {
+        doc["source_rel"].as_posix(): doc["target_rel"].name
+        for doc in markdown_docs
+        if "source_rel" in doc
+    }
 
 
 def run_build(repo_path: Path, build_cmd: list[str]) -> bool:
@@ -477,6 +483,7 @@ def build_index_block(repo: dict) -> str:
         f"# {repo_name}",
         "",
         "Links:",
+        "",
     ]
     if repo_url:
         parts.append(f"- [Repository]({repo_url})")
@@ -513,6 +520,8 @@ def main():
             print(f"Missing repo checkout: {repo_path}")
             failures += 1
             continue
+
+        populate_discovered_repo_metadata(repo, repo_path)
 
         build_ok = True
         if not args.skip_builds and "build_cmd" in repo:

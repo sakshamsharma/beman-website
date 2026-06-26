@@ -14,6 +14,18 @@
     {% block extrahead %}{% endblock %}
   </head>
   <body class="page-kind-{{ page.meta.layout or 'standard' if page else 'standard' }}">
+    {% macro page_href(href) -%}
+      {%- if href == 'index.md' -%}
+        {{ './'|url }}
+      {%- elif href and href[-9:] == '/index.md' -%}
+        {{ href[:-8]|url }}
+      {%- elif href and href[-3:] == '.md' -%}
+        {{ (href[:-3] ~ '/')|url }}
+      {%- else -%}
+        {{ href|url }}
+      {%- endif -%}
+    {%- endmacro %}
+
     <header class="site-header">
       <nav class="site-nav" aria-label="Main navigation">
         <a class="brand" href="{{ 'index.html'|url }}">
@@ -29,7 +41,7 @@
               {% else %}
                 {% set href = nav_item.url %}
               {% endif %}
-              <a class="{% if nav_item.active %}active{% endif %}" href="{{ href|url }}">{{ nav_item.title }}</a>
+              <a class="{% if nav_item.active %}active{% endif %}" href="{{ page_href(href) }}">{{ nav_item.title }}</a>
             {% endfor %}
           </div>
           <div class="social-links" aria-label="Community links">
@@ -62,7 +74,7 @@
                       {{ render_sidebar(item.children) }}
                     </details>
                   {% else %}
-                    <a href="{{ item.url|url }}">{{ item.title }}</a>
+                    <a href="{{ page_href(item.url) }}">{{ item.title }}</a>
                   {% endif %}
                 </li>
               {% endfor %}
@@ -74,7 +86,7 @@
               {% if nav_item.children %}
                 {{ render_sidebar(nav_item.children) }}
               {% else %}
-                <ul><li class="active"><a href="{{ nav_item.url|url }}">{{ nav_item.title }}</a></li></ul>
+                <ul><li class="active"><a href="{{ page_href(nav_item.url) }}">{{ nav_item.title }}</a></li></ul>
               {% endif %}
             {% endif %}
           {% endfor %}
