@@ -14,7 +14,6 @@ This directory contains information about how the project works, goals, and comm
 
 - [beman_library_maturity_model.md](./beman_library_maturity_model.md): The `Beman library maturity model` describes the lifetime of libraries inside the Beman Project.
 - [beman_standard.md](./beman_standard.md): The `Beman Standard` is a set of development guidelines for the Beman Project.
-- [documentation.md](./documentation.md): How to write library prose, document APIs with MrDocs, and add a library to the website.
 - [code_of_conduct.md](./code_of_conduct.md): The Beman Project's code of conduct.
 - [faq.md](./faq.md): Frequently asked questions about the Beman Project.
 - [governance.md](./governance.md): The governance document outlines the structure of the Beman Project.
