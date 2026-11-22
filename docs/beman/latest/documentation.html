@@ -397,7 +397,7 @@
 <div class="sect2">
 <h3 id="_write_the_library_overview"><a class="anchor" href="#_write_the_library_overview"></a>Write the library overview</h3>
 <div class="paragraph">
-<p>Every imported library gets an Overview page. Its repository <code>README.md</code> is included automatically, so start there. A useful README normally contains:</p>
+<p>Every imported library gets an Overview page. Its repository <code>README.md</code> is included automatically. A useful README normally contains:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -439,6 +439,38 @@ See the [design notes](docs/design.md).</code></pre>
 </div>
 </div>
 <div class="sect2">
+<h3 id="_add_a_library"><a class="anchor" href="#_add_a_library"></a>Add a library</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Put the repository next to <code>website/</code> locally.</p>
+</li>
+<li>
+<p>Add its repository name and prose pages to <code>beman_libraries_to_import.yaml</code>, keyed by your repository name.</p>
+</li>
+<li>
+<p>Improve its <code>README.md</code> and public header comments.</p>
+</li>
+<li>
+<p>Add <code>docs/mrdocs.yml</code> if the generated default is insufficient.</p>
+</li>
+<li>
+<p>Build the complete site and inspect Overview, API Reference pages, and any other pages you may have added.</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">make install     # Python and npm dependencies
+make start       # build and serve at http://127.0.0.1:8000
+make build       # write the static site to build/</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Pandoc and MrDocs must already be on <code>PATH</code> for local builds. Changes to Markdown or C&#43;&#43; comments require rebuilding the site.</p>
+</div>
+</div>
+<div class="sect2">
 <h3 id="_add_more_prose_pages"><a class="anchor" href="#_add_more_prose_pages"></a>Add more prose pages</h3>
 <div class="paragraph">
 <p>List additional Markdown files in <code>beman_libraries_to_import.yaml</code>:</p>
@@ -452,7 +484,7 @@ See the [design notes](docs/design.md).</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The key is the repository name under <code>bemanproject</code>. A plain entry keeps its path below <code>docs/</code>. The <code>source: target</code> form renames the page in the generated site. Keep the library checkout next to the website checkout while developing:</p>
+<p>The key is your repository name, example names are <code>optional</code> and <code>execution</code>. A plain entry keeps its path below <code>docs/</code>. The <code>source: target</code> form renames the page in the generated site. Keep the library checkout next to the website checkout while developing:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -518,38 +550,6 @@ result&lt;T&gt; make_result(T value);</code></pre>
 <h3 id="_configure_mrdocs_when_needed"><a class="anchor" href="#_configure_mrdocs_when_needed"></a>Configure MrDocs when needed</h3>
 <div class="paragraph">
 <p>The website creates a basic MrDocs configuration for a library with an <code>include/</code> directory. Add <code>docs/mrdocs.yml</code> to the library repository when it needs custom include paths, symbol filters, generated headers, or compiler configuration. Keep public symbols included and implementation details excluded.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_add_a_library"><a class="anchor" href="#_add_a_library"></a>Add a library</h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Put the repository next to <code>website/</code> locally.</p>
-</li>
-<li>
-<p>Add its repository name and prose pages to <code>beman_libraries_to_import.yaml</code>.</p>
-</li>
-<li>
-<p>Improve its <code>README.md</code> and public header comments.</p>
-</li>
-<li>
-<p>Add <code>docs/mrdocs.yml</code> if the generated default is insufficient.</p>
-</li>
-<li>
-<p>Build the complete site and inspect Overview, prose, and API Reference pages.</p>
-</li>
-</ol>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">make install     # Python and npm dependencies
-make start       # build and serve at http://127.0.0.1:8000
-make build       # write the static site to build/</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Pandoc and MrDocs must already be on <code>PATH</code> for local builds. Changes to Markdown or C&#43;&#43; comments require rebuilding the composed site.</p>
 </div>
 </div>
 </div>
